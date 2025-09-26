@@ -1915,6 +1915,59 @@ Status ClusterAdminClient::FlushTablesById(
   return Status::OK();
 }
 
+Status ClusterAdminClient::FlushAllTables(MonoDelta timeout) {
+  std::vector<YBTableName> user_tables;
+  RETURN_NOT_OK(CollectUserTables(&user_tables));
+  
+  if (user_tables.empty()) {
+    std::cout << "No user tables found to flush" << std::endl;
+    return Status::OK();
+  }
+  
+  std::cout << "Flushing " << user_tables.size() << " user tables..." << std::endl;
+  
+  RETURN_NOT_OK(yb_client_->FlushTables(user_tables, timeout, 
+                                        false /* add_indexes */));
+  
+  std::cout << "Flushed all user tables successfully" << std::endl;
+  return Status::OK();
+}
+
+Status ClusterAdminClient::CollectUserTables(std::vector<YBTableName>* user_tables) {
+  DCHECK_ONLY_NOTNULL(user_tables);
+  user_tables->clear();
+  
+  auto all_tables_result = yb_client_->ListTables();
+  RETURN_NOT_OK(all_tables_result);
+  
+  for (const auto& table : *all_tables_result) {
+    if (IsSystemTable(table)) {
+      continue;
+    }
+    user_tables->push_back(table);
+  }
+  
+  return Status::OK();
+}
+
+bool ClusterAdminClient::IsSystemTable(const YBTableName& table_name) {
+  const std::string keyspace = table_name.namespace_name();
+  const std::string table = table_name.table_name();
+  const std::vector<std::string> system_keyspaces = {
+    "postgres",
+    "system_platform"
+  };
+  for (const auto& sys_keyspace : system_keyspaces) {
+    if (keyspace == sys_keyspace) {
+      return true;
+    }
+  }
+  if (table.substr(0, 3) == "pg_"){
+    return true;
+  }
+  return false;
+}
+
 Status ClusterAdminClient::CompactTables(
     const std::vector<YBTableName>& table_names, MonoDelta timeout,
     bool add_indexes, bool add_vector_indexes) {

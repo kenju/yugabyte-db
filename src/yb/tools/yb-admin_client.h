@@ -252,6 +252,8 @@ class ClusterAdminClient {
       MonoDelta timeout = MonoDelta::FromSeconds(30),
       bool add_indexes = false);
 
+  Status FlushAllTables(MonoDelta timeout = MonoDelta::FromSeconds(20));
+
   Status CompactTables(
       const std::vector<client::YBTableName>& table_names,
       MonoDelta timeout = MonoDelta::FromSeconds(30),
@@ -633,6 +635,9 @@ class ClusterAdminClient {
 
   Status DiscoverAllMasters(
     const HostPort& init_master_addr, std::string* all_master_addrs);
+
+  Status CollectUserTables(std::vector<client::YBTableName>* user_tables);
+  bool IsSystemTable(const client::YBTableName& table_name);
 
   // Parses a placement info string of the form
   // "cloud1.region1.zone1[:min_num_replicas],cloud2.region2.zone2[:min_num_replicas],..."

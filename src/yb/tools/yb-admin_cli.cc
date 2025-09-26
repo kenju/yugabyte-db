@@ -839,6 +839,25 @@ Status flush_table_by_id_action(
   return Status::OK();
 }
 
+const auto flush_all_tables_args = "[<timeout_in_seconds>] (default 20)";
+Status flush_all_tables_action(const ClusterAdminCli::CLIArguments& args, ClusterAdminClient* client) {
+  RETURN_NOT_OK(CheckArgumentsCount(args.size(), 0, 1));
+  
+  std::optional<int> timeout_secs;
+  if (!args.empty()) {
+    int parsed_timeout = VERIFY_RESULT(CheckedStoi(args[0]));
+    if (parsed_timeout <= 0) {
+      return STATUS(InvalidArgument, "Timeout must be a positive integer");
+    }
+    timeout_secs = parsed_timeout;
+  }
+  
+  RETURN_NOT_OK_PREPEND(
+      client->FlushAllTables(MonoDelta::FromSeconds(timeout_secs.value_or(20))),
+      "Unable to flush all tables");
+  return Status::OK();
+}
+
 const auto flush_sys_catalog_args = "";
 Status flush_sys_catalog_action(
     const ClusterAdminCli::CLIArguments& args, ClusterAdminClient* client) {
@@ -2892,6 +2911,7 @@ void ClusterAdminCli::RegisterCommandHandlers() {
   REGISTER_COMMAND(delete_index_by_id);
   REGISTER_COMMAND(flush_table);
   REGISTER_COMMAND(flush_table_by_id);
+  REGISTER_COMMAND(flush_all_tables);
   REGISTER_COMMAND(flush_sys_catalog);
   REGISTER_COMMAND(compact_sys_catalog);
   REGISTER_COMMAND(compact_table);
